@@ -1,0 +1,17 @@
+# VS Code files
+*.VC.db*
+
+# vscode folder
+.vscode/
+
+# OS X files
+.DS_Store
+
+# Build artifacts
+build/
+
+# Python
+*.pyc
+
+# ignore kitti data
+2011_09_30/2011_09_30_drive_0018_sync
