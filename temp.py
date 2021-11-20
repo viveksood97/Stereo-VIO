@@ -11,6 +11,50 @@ date = '2011_09_30'
 drive = '0018'
 dataset = pykitti.raw(basedir, date, drive, imformat='cv2')
 
+class Debugger:
+
+    def __init__(self,size):
+        self.stack = []
+        self.type = []
+        self.nrows = size[0]
+        self.ncols = size[1]
+    
+    def collect(self,frame,frame_type):
+        self.stack.append(frame)
+        self.type.append(frame_type)
+
+    def display(self,plot=False):
+        if plot == True:
+            for index in range(0,len(self.stack)):
+                if self.type[index][0] == "image":
+                    ax = plt.subplot(self.nrows,self.ncols,index+1)
+                    ax.imshow(cv2.cvtColor(self.stack[index], cv2.COLOR_BGR2RGB), cmap='gray')
+                elif self.type[index][0] == "plot":
+                    ax = plt.subplot(self.nrows,self.ncols,index+1)
+                    ax.plot(*zip(*self.stack[index]))
+                elif self.type[index][0] == "scatter":
+                    ax = plt.subplot(self.nrows,self.ncols,index+1)
+                    ax.scatter(*zip(*self.stack[index]),linewidths=0.1)
+
+                
+            plt.tight_layout()
+            plt.show()
+        else:
+            stack = list()
+            temp = list()
+            for index,image in enumerate(self.stack):
+                if(self.type[index][1] == "binary"):
+                    temp.append(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR))
+                else:
+                    temp.append(image)
+                if len(temp) == 3:
+                    stack.append(np.hstack((temp[0],temp[1],temp[2])))
+                    temp = list()
+                
+            stacked = np.vstack(tuple(stack))
+            cv2.imshow('Debugger',cv2.resize(stacked,None,fx=0.4,fy=0.4))
+
+
 def compute_left_disparity_map(img_left, img_right, matcher='bm', rgb=False, verbose=False):
     '''
     Takes a left and right stereo pair of images and computes the disparity map for the left
@@ -301,79 +345,92 @@ def visualize_matches(image1, kp1, image2, kp2, match):
     plt.imshow(image_matches)
     # plt.show()
 
-# nframes = len(dataset.cam0_files)
-nframes = 100
+nframes = len(dataset.cam0_files)
+# nframes = 1000
 
 fig = plt.figure(figsize=(14, 14))
-ax = fig.add_subplot(projection='3d')
-ax.view_init(elev=-20, azim=270)
+ax = fig.add_subplot()
+# ax = fig.add_subplot(projection='3d')
+# ax.view_init(elev=-20, azim=270)
 trajectory = np.zeros((nframes+2, 3, 4))
 f = np.array(dataset.get_gray(0)[0])
 mask = np.zeros(f.shape[:2], dtype=np.uint8)
+# mask = cv2.rectangle(mask, (96, 0), (xmax, ymax), (255), thickness=-1)
 
 k_left, r_left, t_left = decompose_projection_matrix(dataset.calib.P_rect_00)
 k_right, r_right, t_right = decompose_projection_matrix(dataset.calib.P_rect_10)
 
 for i in range(nframes-1):
-    print(i)
-    first_gray = dataset.get_gray(i)
-    second_gray = dataset.get_gray(i+1)
+    # print(i)
+    # first_gray = dataset.get_gray(i)
+    # second_gray = dataset.get_gray(i+1)
 
-    disp = compute_left_disparity_map(np.array(first_gray[0]),np.array(first_gray[1]), 
-                                    matcher='bm',
-                                    verbose=False)
+    # disp = compute_left_disparity_map(np.array(first_gray[0]),np.array(first_gray[1]), 
+    #                                 matcher='bm',
+    #                                 verbose=False)
 
-    # print(dataset.calib.P_rect_00)
+    # # print(dataset.calib.P_rect_00)
 
-    depth = calc_depth_map(disp, k_left, t_left, t_right)
-
-    kp0, des0 = extract_features(np.array(first_gray[0]), 'sift', None)
-    kp1, des1 = extract_features(np.array(second_gray[0]), 'sift', None)
-
-    matches_unfilt = match_features(des0, des1, matching='BF', detector='sift', sort=True)
-
-    matches_unfilt = filter_matches_distance(matches_unfilt, 0.8)
-
-    # visualize_matches(np.array(first_gray[0]),kp0, np.array(second_gray[0]), kp1, matches_unfilt)
-
-    rmat, tvec, img1_points, img2_points = estimate_motion(matches_unfilt, kp0, kp1, k_left, depth)
-
-    Tmat = np.eye(4)
-    Tmat[:3, :3] = rmat
-    Tmat[:3, 3] = tvec.T
-
-    T_tot = np.eye(4)
-
-    T_tot = T_tot.dot(np.linalg.inv(Tmat))
+    # depth = calc_depth_map(disp, k_left, t_left, t_right)
     
-    trajectory[i+1, :, :] = T_tot[:3, :]
+    # for j, pixel in enumerate(depth[0]):
+    #     if pixel < depth.max():
+    #         print('First non-max value at index', j)
+    #         break
 
-    xs = trajectory[:i+2, 0, 3]
-    ys = trajectory[:i+2, 1, 3]
-    zs = trajectory[:i+2, 2, 3]
+    # mask = cv2.rectangle(mask, (96, 0), (depth.shape[0], depth.shape[1]), (255), thickness=-1)
 
-    # plt.plot(xs, ys, zs, c='chartreuse')
-    # plt.pause(1e-32)
+    # kp0, des0 = extract_features(np.array(first_gray[0]), 'sift', mask)
+    # kp1, des1 = extract_features(np.array(second_gray[0]), 'sift', mask)
 
-    # lat1 = dataset.oxts[0][0][0]
+    # matches_unfilt = match_features(des0, des1, matching='BF', detector='sift', sort=True)
+
+    # matches_unfilt = filter_matches_distance(matches_unfilt, 0.5)
+
+    # # visualize_matches(np.array(first_gray[0]),kp0, np.array(second_gray[0]), kp1, matches_unfilt)
+
+    # rmat, tvec, img1_points, img2_points = estimate_motion(matches_unfilt, kp0, kp1, k_left, depth)
+
+    # Tmat = np.eye(4)
+    # Tmat[:3, :3] = rmat
+    # Tmat[:3, 3] = tvec.T
+
+    # T_tot = np.eye(4)
+
+    # T_tot = T_tot.dot(np.linalg.inv(Tmat))
+    
+    # trajectory[i+1, :, :] = T_tot[:3, :]
+
+    # xs = trajectory[:i+2, 0, 3]
+    # ys = trajectory[:i+2, 1, 3]
+    # zs = trajectory[:i+2, 2, 3]
+
+    lat1 = dataset.oxts[i][0][0]
     # lat2 = dataset.oxts[1][0][0]
 
-    # long1 = dataset.oxts[0][0][1]
+    long1 = dataset.oxts[i][0][1]
     # long2 = dataset.oxts[1][0][1]
 
-    # ele1 = dataset.oxts[0][0][2]
+    ele1 = dataset.oxts[i][0][2]
     # ele2 = dataset.oxts[1][0][2]
 
-    # x1,y1,z1 = cartesian(lat1,long1,ele1)
+    x1,y1,z1 = cartesian(lat1,long1,ele1)
     # x2,y2,z2 = cartesian(lat2,long2,ele2)
+    
+    # ax.scatter(x1, y1, z1, c='chartreuse')
+    ax.scatter(x1,y1,c='chartreuse')
+    plt.pause(1e-320)
 
+    # cv2.imshow("gray1",np.array(first_gray[0]))
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     # print(xs,x2-x1)
     # print(ys,y2-y1)
     # print(zs,z2-z1)
     # dataset.oxts[0].packet.lat 
-ax.plot(trajectory[:, :, 3][:, 0], 
-        trajectory[:, :, 3][:, 1], 
-        trajectory[:, :, 3][:, 2], label='estimated', color='orange')
+# ax.plot(trajectory[:, :, 3][:, 0], 
+#         trajectory[:, :, 3][:, 1], 
+#         trajectory[:, :, 3][:, 2], label='estimated', color='orange')
 
-ax.view_init(elev=-20, azim=270)
+# ax.view_init(elev=-20, azim=270)
 plt.show()
